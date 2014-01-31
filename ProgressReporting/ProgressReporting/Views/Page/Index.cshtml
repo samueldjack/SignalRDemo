@@ -1,0 +1,29 @@
+﻿@model ProgressReporting.Models.GlobalJobViewModel
+
+@{
+    ViewBag.Title = "My Page";
+}
+
+<h2>My Page</h2>
+
+<p>There are currently <span id="viewerCount">0</span> people viewing this page.</p>
+
+<p>The pages being viewed are:</p>
+
+<ul id="pageList">
+    
+</ul>
+
+@section scripts {
+    <script src="/Scripts/jquery.signalR-2.0.2.js"></script>
+    <script src="/signalr/hubs"></script>
+    <script>
+        var hubProxy = $.connection.pageViewersHub;
+
+        hubProxy.client.viewerCountChanged = function (count) {
+            $("#viewerCount").text(count);
+        };
+
+        $.connection.hub.start();
+    </script>
+}

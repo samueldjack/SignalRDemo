@@ -1,0 +1,92 @@
+﻿@model ProgressReporting.Models.GlobalJobViewModel
+
+@{
+    ViewBag.Title = "Global Job";
+}
+
+<h2>A Global Job</h2>
+<p>All users will see the progress of this job when they navigate to this page. Try refreshing the page too!</p>
+<div>
+    <button id="startButton" class="btn btn-default">Start Job</button>
+    <button id="cancelButton" class="btn btn-default" style="display:none">Cancel</button>
+</div>
+
+<div id="progressDisplay" style="display:none">
+    <div class="progress" id="progresssBar">
+        <div id="progresssBarValue" class="progress-bar" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
+        </div>
+    </div>
+</div>
+
+<div id="completedDisplay" style="display:none">
+    <span class="glyphicon glyphicon-check"></span> Completed 
+</div>
+
+@section scripts {
+    @Scripts.Render("~/bundles/signalR")
+    <script src="/signalr/hubs"></script>
+    <script>
+        (function () {
+            @if (Model.Job != null)
+            {
+                <text>var existingJob = @Html.Raw(Json.Encode(new {JobId = Model.Job.Id, Progress = Model.Job.Progress}));</text>
+            }
+            else
+            {
+                <text>var existingJob = null</text>
+            }
+
+            function setProgressBarWidth(progress)
+            {
+                $("#progresssBarValue").css("width", progress + "%");
+            }
+
+            function trackJobProgress(job) {
+                setProgressBarWidth(job.Progress);
+                $("#completedDisplay").hide();
+                $('#progressDisplay').show();
+                $('#startButton').prop('disabled', true);
+                $('#cancelButton').show();
+
+                var hubProxy = $.connection.progressHub;
+
+                hubProxy.client.progressChanged = function(jobId, progress) {
+                    setProgressBarWidth(progress);
+                };
+                hubProxy.client.jobCompleted = function (jobId) {
+                    $('#progressDisplay').hide();
+                    $("#completedDisplay").show();
+                    $("#cancelButton").hide();
+                    $("#startButton").prop('disabled', false);
+                    $('#cancelButton').off("click", cancelClickHandler);
+                    $.connection.hub.stop();
+                };
+
+                var cancelClickHandler = function() {
+                    hubProxy.server.cancelJob(job.JobId);
+                };
+
+                $('#cancelButton').on("click", cancelClickHandler);
+                $.connection.hub.logging = true;
+                $.connection.hub.start().done(function() {
+                    hubProxy.server.trackJob(job.JobId);
+                });
+            }
+
+            $("#startButton").click(function() {
+
+                $.ajax({
+                    url: '/job/doglobaljob',
+                    method: 'POST',
+                    success: function(data) {
+                        trackJobProgress(data);
+                    }
+                });
+            });
+
+            if (existingJob != null) {
+                trackJobProgress(existingJob);
+            }
+        })(); 
+    </script>
+}

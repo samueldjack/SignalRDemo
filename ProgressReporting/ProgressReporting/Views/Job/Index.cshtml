@@ -1,0 +1,68 @@
+﻿@model ProgressReporting.Models.GlobalJobViewModel
+
+@{
+    ViewBag.Title = "Do a Job";
+}
+
+<h2>A Job</h2>
+
+<div>
+    <button id="startButton" class="btn btn-default">Start Job</button>
+</div>
+
+<div id="progressDisplay" style="display:none">
+    <div class="progress" id="progresssBar">
+        <div id="progresssBarValue" class="progress-bar" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
+        </div>
+    </div>
+</div>
+
+<div id="completedDisplay" style="display:none">
+    <span class="glyphicon glyphicon-check"></span> Completed
+</div>
+
+@section scripts {
+    <script src="/Scripts/jquery.signalR-2.0.2.js"></script>
+    <script src="/signalr/hubs"></script>
+    <script>
+        (function () {
+            $("#startButton").click(function () {
+                $('#startButton').prop('disabled', true);
+                $.ajax({
+                    url: '/job/dojob',
+                    method: 'POST',
+                    success: function (data) {
+                        trackJobProgress(data);
+                    }
+                });
+            });
+
+            function trackJobProgress(job) {
+                setProgressBarWidth(job.Progress);
+                $("#completedDisplay").hide();
+                $('#progressDisplay').show();
+
+                var hubProxy = $.connection.progressHub;
+
+                hubProxy.client.progressChanged = function (jobId, progress) {
+                    setProgressBarWidth(progress);
+                };
+
+                hubProxy.client.jobCompleted = function (jobId) {
+                    $('#progressDisplay').hide();
+                    $("#completedDisplay").show();
+                    $("#startButton").prop('disabled', false);
+                    $.connection.hub.stop();
+                };
+
+                $.connection.hub.start().done(function () {
+                    hubProxy.server.trackJob(job.JobId);
+                });
+            }
+
+            function setProgressBarWidth(progress) {
+                $("#progresssBarValue").css("width", progress + "%");
+            }
+        })();
+    </script>
+}
