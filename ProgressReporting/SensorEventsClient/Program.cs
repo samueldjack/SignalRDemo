@@ -13,6 +13,7 @@ namespace SensorEventsClient
     {
         static void Main(string[] args)
         {
+            //TODO: Testing 123
             var connection = new Connection("http://localhost:3669/sensor/events");
 
             connection.Start().Wait();
